@@ -31,3 +31,7 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Assignment files
+KIRO_ASSIGNMENT.md
+KIRO_CODE_QUALITY.md
