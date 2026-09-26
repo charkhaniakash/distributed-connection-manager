@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  node-1:
+    build: .
+    environment:
+      - NODE_ID=node-1
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - HEARTBEAT_INTERVAL_MS=5000
+      - NODE_FAILURE_TIMEOUT_MS=15000
+      - DRAIN_TIMEOUT_MS=30000
+      - SESSION_HEARTBEAT_INTERVAL_MS=10000
+      - SESSION_TIMEOUT_MS=30000
+      - GLOBAL_CAPACITY=1000
+      - DEFAULT_ORG_LIMIT=100
+      - LOG_LEVEL=info
+    ports:
+      - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  node-2:
+    build: .
+    environment:
+      - NODE_ID=node-2
+      - PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - HEARTBEAT_INTERVAL_MS=5000
+      - NODE_FAILURE_TIMEOUT_MS=15000
+      - DRAIN_TIMEOUT_MS=30000
+      - SESSION_HEARTBEAT_INTERVAL_MS=10000
+      - SESSION_TIMEOUT_MS=30000
+      - GLOBAL_CAPACITY=1000
+      - DEFAULT_ORG_LIMIT=100
+      - LOG_LEVEL=info
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  node-3:
+    build: .
+    environment:
+      - NODE_ID=node-3
+      - PORT=3003
+      - REDIS_URL=redis://redis:6379
+      - HEARTBEAT_INTERVAL_MS=5000
+      - NODE_FAILURE_TIMEOUT_MS=15000
+      - DRAIN_TIMEOUT_MS=30000
+      - SESSION_HEARTBEAT_INTERVAL_MS=10000
+      - SESSION_TIMEOUT_MS=30000
+      - GLOBAL_CAPACITY=1000
+      - DEFAULT_ORG_LIMIT=100
+      - LOG_LEVEL=info
+    ports:
+      - "3003:3003"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - node-1
+      - node-2
+      - node-3
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
