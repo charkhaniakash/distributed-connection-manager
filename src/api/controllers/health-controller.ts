@@ -13,9 +13,9 @@ export class HealthController {
    * GET /health
    * Returns health status of current node
    */
-  async getHealth(req: Request, res: Response): Promise<void> {
+  async getHealth(_req: Request, res: Response): Promise<void> {
     try {
-      const redisHealthy = await redisClient.ping();
+      const redisHealthy = await this.ping();
       const nodeState = this.nodeManager.getCurrentState();
 
       res.json({
@@ -31,6 +31,15 @@ export class HealthController {
         nodeId: config.nodeId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  }
+
+  private async ping(): Promise<boolean> {
+    try {
+      await redisClient.getClient().ping();
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 }

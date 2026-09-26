@@ -15,26 +15,26 @@ export function createRoutes(
   const router = Router();
 
   // Health
-  router.get('/health', (req, res) => healthController.getHealth(req, res));
+  router.get('/health', (req, res) => void healthController.getHealth(req, res));
 
   // Nodes
-  router.get('/nodes', (req, res) => nodesController.getAllNodes(req, res));
-  router.get('/nodes/:nodeId', (req, res) => nodesController.getNode(req, res));
-  router.post('/nodes/:nodeId/drain', (req, res) => nodesController.drainNode(req, res));
+  router.get('/nodes', (req, res) => void nodesController.getAllNodes(req, res));
+  router.get('/nodes/:nodeId', (req, res) => void nodesController.getNode(req, res));
+  router.post('/nodes/:nodeId/drain', (req, res) => void nodesController.drainNode(req, res));
 
   // Organizations
   router.get('/organizations/:organizationId', (req, res) =>
-    organizationsController.getOrganization(req, res)
+    void organizationsController.getOrganization(req, res)
   );
   router.put('/organizations/:organizationId/limit', (req, res) =>
-    organizationsController.setOrganizationLimit(req, res)
+    void organizationsController.setOrganizationLimit(req, res)
   );
 
   // Sessions
-  router.get('/sessions/:sessionId', (req, res) => sessionsController.getSession(req, res));
+  router.get('/sessions/:sessionId', (req, res) => void sessionsController.getSession(req, res));
 
   // Stats
-  router.get('/stats', (req, res) => statsController.getStats(req, res));
+  router.get('/stats', (req, res) => void statsController.getStats(req, res));
 
   return router;
 }

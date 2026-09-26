@@ -16,14 +16,14 @@ export class StatsController {
    * GET /stats
    * Returns global system statistics
    */
-  async getStats(req: Request, res: Response): Promise<void> {
+  async getStats(_req: Request, res: Response): Promise<void> {
     try {
       const globalActiveCount = await this.capacityRepository.getGlobalActiveCount();
       const globalCapacity = await this.capacityRepository.getGlobalCapacity();
       const nodes = await this.nodeManager.getAllNodes();
 
       // Get organizations with active connections
-      const orgIds = await this.capacityRepository.getAllOrganizationsWithConnections();
+      const orgIds = await this.capacityRepository.getAllOrganizationIds();
       const organizations: Record<string, { activeCount: number; limit: number }> = {};
 
       for (const orgId of orgIds) {

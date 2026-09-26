@@ -52,7 +52,7 @@ export class OrganizationsController {
   async setOrganizationLimit(req: Request, res: Response): Promise<void> {
     try {
       const { organizationId } = req.params;
-      const { limit } = req.body;
+      const { limit } = req.body as { limit: number };
 
       if (!limit || typeof limit !== 'number' || limit <= 0) {
         res.status(400).json({

@@ -3,6 +3,7 @@ import { NodeManager } from '../../node/node-manager';
 import { SessionManager } from '../../connection/session-manager';
 import { DrainService } from '../../node/drain-service';
 import { logger } from '../../utils/logger';
+import { config } from '../../config/config';
 
 /**
  * Nodes management controller
@@ -18,7 +19,7 @@ export class NodesController {
    * GET /nodes
    * Returns information about all nodes
    */
-  async getAllNodes(req: Request, res: Response): Promise<void> {
+  async getAllNodes(_req: Request, res: Response): Promise<void> {
     try {
       const nodes = await this.nodeManager.getAllNodes();
       const nodesWithHealth = await Promise.all(
@@ -98,7 +99,7 @@ export class NodesController {
       const { nodeId } = req.params;
 
       // Only allow draining the current node
-      if (nodeId !== require('../../config/config').config.nodeId) {
+      if (nodeId !== config.nodeId) {
         res.status(400).json({
           error: 'Can only drain the current node',
         });
