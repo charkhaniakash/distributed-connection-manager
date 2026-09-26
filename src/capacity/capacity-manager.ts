@@ -13,6 +13,7 @@ const RESERVE_CAPACITY_SCRIPT = `
   local org_count_key = KEYS[2]
   local global_capacity_key = KEYS[3]
   local global_count_key = KEYS[4]
+  local orgs_all_key = KEYS[5]
   
   local org_id = ARGV[1]
   local default_org_limit = tonumber(ARGV[2])
@@ -64,32 +65,54 @@ const RESERVE_CAPACITY_SCRIPT = `
   local new_org_count = redis.call('INCR', org_count_key)
   local new_global_count = redis.call('INCR', global_count_key)
   
+  -- Track organization in orgs:all set
+  redis.call('SADD', orgs_all_key, org_id)
+  
   return {2, new_org_count, new_global_count}  -- 2 = SUCCESS
 `;
 
 /**
- * Lua script for atomic capacity release
- * Ensures both organization and global counts are decremented atomically and safely
- * Prevents counts from going below zero
+ * Lua script for atomic session cleanup
+ * Ensures session cleanup and capacity release happen atomically
+ * This prevents double-decrement when both disconnect and recovery race
  */
-const RELEASE_CAPACITY_SCRIPT = `
-  local org_count_key = KEYS[1]
-  local global_count_key = KEYS[2]
+const CLEANUP_SESSION_SCRIPT = `
+  local session_key = KEYS[1]
   
-  -- Decrement organization count
+  -- Get session data
+  local org_id = redis.call('HGET', session_key, 'organizationId')
+  local node_id = redis.call('HGET', session_key, 'nodeId')
+  
+  -- If session doesn't exist, already cleaned up
+  if not org_id or not node_id then
+    return 0
+  end
+  
+  -- Build derived keys
+  local org_sessions_key = 'org:' .. org_id .. ':sessions'
+  local node_sessions_key = 'node:' .. node_id .. ':sessions'
+  local org_count_key = 'org:' .. org_id .. ':active_count'
+  local global_count_key = 'global:active_count'
+  
+  -- Get session ID from the key
+  local session_id = string.match(session_key, 'session:(.+)')
+  
+  -- Delete session
+  redis.call('DEL', session_key)
+  
+  -- Remove from sets
+  redis.call('SREM', org_sessions_key, session_id)
+  redis.call('SREM', node_sessions_key, session_id)
+  
+  -- Decrement counters (with guard)
   local org_count = redis.call('GET', org_count_key)
   if org_count and tonumber(org_count) > 0 then
     redis.call('DECR', org_count_key)
-  else
-    redis.call('SET', org_count_key, 0)
   end
   
-  -- Decrement global count
   local global_count = redis.call('GET', global_count_key)
   if global_count and tonumber(global_count) > 0 then
     redis.call('DECR', global_count_key)
-  else
-    redis.call('SET', global_count_key, 0)
   end
   
   return 1
@@ -101,7 +124,7 @@ const RELEASE_CAPACITY_SCRIPT = `
  */
 export class CapacityManager {
   private reserveScriptSha: string | null = null;
-  private releaseScriptSha: string | null = null;
+  private cleanupScriptSha: string | null = null;
 
   constructor(private redis: RedisClientType) {}
 
@@ -112,10 +135,10 @@ export class CapacityManager {
   async loadScripts(): Promise<void> {
     try {
       this.reserveScriptSha = await this.redis.scriptLoad(RESERVE_CAPACITY_SCRIPT);
-      this.releaseScriptSha = await this.redis.scriptLoad(RELEASE_CAPACITY_SCRIPT);
+      this.cleanupScriptSha = await this.redis.scriptLoad(CLEANUP_SESSION_SCRIPT);
       logger.info('Capacity management Lua scripts loaded', {
         reserveSha: this.reserveScriptSha,
-        releaseSha: this.releaseScriptSha,
+        cleanupSha: this.cleanupScriptSha,
       });
     } catch (error) {
       logger.error('Failed to load Lua scripts', error);
@@ -139,6 +162,7 @@ export class CapacityManager {
     const orgCountKey = RedisKeys.orgActiveCount(organizationId);
     const globalCapacityKey = RedisKeys.globalCapacity();
     const globalCountKey = RedisKeys.globalActiveCount();
+    const orgsAllKey = 'orgs:all';
 
     try {
       let result: number[];
@@ -146,13 +170,13 @@ export class CapacityManager {
       if (this.reserveScriptSha) {
         // Use pre-loaded script for better performance
         result = (await this.redis.evalSha(this.reserveScriptSha, {
-          keys: [orgLimitKey, orgCountKey, globalCapacityKey, globalCountKey],
+          keys: [orgLimitKey, orgCountKey, globalCapacityKey, globalCountKey, orgsAllKey],
           arguments: [organizationId, defaultOrgLimit.toString(), globalCapacity.toString()],
         })) as number[];
       } else {
         // Fallback to inline script
         result = (await this.redis.eval(RESERVE_CAPACITY_SCRIPT, {
-          keys: [orgLimitKey, orgCountKey, globalCapacityKey, globalCountKey],
+          keys: [orgLimitKey, orgCountKey, globalCapacityKey, globalCountKey, orgsAllKey],
           arguments: [organizationId, defaultOrgLimit.toString(), globalCapacity.toString()],
         })) as number[];
       }
@@ -193,31 +217,39 @@ export class CapacityManager {
   }
 
   /**
-   * Atomically release capacity after a connection ends
-   * This operation is idempotent - it's safe to call multiple times for the same session
+   * Atomically cleanup a session and release its capacity
+   * This operation is truly idempotent - safe to call multiple times for the same session
    * 
-   * The Lua script ensures counts never go below zero even if called multiple times
+   * The Lua script ensures that cleanup only happens once even if both disconnect
+   * and recovery race for the same session
    */
-  async releaseCapacity(organizationId: string): Promise<void> {
-    const orgCountKey = RedisKeys.orgActiveCount(organizationId);
-    const globalCountKey = RedisKeys.globalActiveCount();
+  async atomicCleanupSession(sessionId: string): Promise<boolean> {
+    const sessionKey = RedisKeys.session(sessionId);
 
     try {
-      if (this.releaseScriptSha) {
-        await this.redis.evalSha(this.releaseScriptSha, {
-          keys: [orgCountKey, globalCountKey],
+      let result: number;
+
+      if (this.cleanupScriptSha) {
+        result = (await this.redis.evalSha(this.cleanupScriptSha, {
+          keys: [sessionKey],
           arguments: [],
-        });
+        })) as number;
       } else {
-        await this.redis.eval(RELEASE_CAPACITY_SCRIPT, {
-          keys: [orgCountKey, globalCountKey],
+        result = (await this.redis.eval(CLEANUP_SESSION_SCRIPT, {
+          keys: [sessionKey],
           arguments: [],
-        });
+        })) as number;
       }
 
-      logger.debug('Capacity released', { organizationId });
+      if (result === 1) {
+        logger.debug('Session cleaned up atomically', { sessionId });
+        return true;
+      } else {
+        logger.debug('Session already cleaned up', { sessionId });
+        return false;
+      }
     } catch (error) {
-      logger.error('Failed to release capacity', error, { organizationId });
+      logger.error('Failed to cleanup session', error, { sessionId });
       throw error;
     }
   }
