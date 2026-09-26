@@ -1,0 +1,117 @@
+.nodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.node-item {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #ccc;
+}
+
+.node-item.active {
+  border-left-color: #10b981;
+  background: #ecfdf5;
+}
+
+.node-item.draining {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.node-item.stopped {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.node-item.starting {
+  border-left-color: #6366f1;
+  background: #eef2ff;
+}
+
+.node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.node-id {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.node-status {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background: #10b981;
+  color: white;
+}
+
+.status-draining {
+  background: #f59e0b;
+  color: white;
+}
+
+.status-stopped {
+  background: #ef4444;
+  color: white;
+}
+
+.status-starting {
+  background: #6366f1;
+  color: white;
+}
+
+.node-details {
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.node-details div {
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-drain {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-drain:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.btn-drain:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+}

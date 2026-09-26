@@ -1,0 +1,30 @@
+.orgs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.org-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.org-content {
+  flex: 1;
+}
+
+.org-name {
+  font-weight: 600;
+  font-size: 1.05em;
+  margin-bottom: 8px;
+}
+
+.org-usage {
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 8px;
+}
