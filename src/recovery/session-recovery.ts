@@ -1,5 +1,4 @@
 import { SessionManager } from '../connection/session-manager';
-import { CapacityManager } from '../capacity/capacity-manager';
 import { SessionRepository } from '../redis/session-repository';
 import { SessionStatus } from '../types';
 import { logger } from '../utils/logger';
@@ -7,13 +6,11 @@ import { logger } from '../utils/logger';
 /**
  * SessionRecoveryService handles cleanup of orphaned sessions
  * Ensures that sessions from crashed nodes are properly cleaned up
- * and their capacity is released
  */
 export class SessionRecoveryService {
   constructor(
     private sessionRepository: SessionRepository,
-    private sessionManager: SessionManager,
-    private capacityManager: CapacityManager
+    private sessionManager: SessionManager
   ) {}
 
   /**
@@ -66,11 +63,8 @@ export class SessionRecoveryService {
       // Mark session as failed
       await this.sessionRepository.updateSessionStatus(sessionId, SessionStatus.NODE_FAILURE);
 
-      // Clean up session (idempotent)
+      // Clean up session atomically (includes capacity release)
       await this.sessionManager.cleanupSession(sessionId);
-
-      // Release capacity (idempotent)
-      await this.capacityManager.releaseCapacity(session.organizationId);
 
       logger.info('Session recovered', {
         sessionId,

@@ -29,7 +29,7 @@ export class FailureDetector {
 
     // Run detection periodically
     this.detectionInterval = setInterval(() => {
-      this.detectAndRecover();
+      void this.detectAndRecover();
     }, config.nodeFailureTimeoutMs);
 
     logger.info('Failure detector started', {
