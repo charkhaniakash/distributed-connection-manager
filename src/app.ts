@@ -157,7 +157,8 @@ class Application {
     const nodesController = new NodesController(
       this.nodeManager,
       this.sessionManager,
-      this.drainService
+      this.drainService,
+      this.connectionManager
     );
     const organizationsController = new OrganizationsController(
       this.sessionManager,

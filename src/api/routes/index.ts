@@ -21,6 +21,7 @@ export function createRoutes(
   router.get('/nodes', (req, res) => void nodesController.getAllNodes(req, res));
   router.get('/nodes/:nodeId', (req, res) => void nodesController.getNode(req, res));
   router.post('/nodes/:nodeId/drain', (req, res) => void nodesController.drainNode(req, res));
+  router.post('/nodes/:nodeId/activate', (req, res) => void nodesController.activateNode(req, res));
 
   // Organizations
   router.get('/organizations/:organizationId', (req, res) =>

@@ -142,4 +142,21 @@ export class DrainService {
       elapsedMs: this.drainStartTime ? Date.now() - this.drainStartTime : 0,
     };
   }
+
+  /**
+   * Reset drain state so the node can be re-activated after a drain.
+   * Clears any pending timers and marks the service as no longer draining.
+   */
+  reset(): void {
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+      this.monitorInterval = null;
+    }
+    if (this.hardTimeout) {
+      clearTimeout(this.hardTimeout);
+      this.hardTimeout = null;
+    }
+    this.isDraining = false;
+    this.drainStartTime = null;
+  }
 }
