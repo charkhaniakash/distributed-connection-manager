@@ -1,4 +1,5 @@
 import { NodeRepository } from '../redis/node-repository';
+import { SessionRepository } from '../redis/session-repository';
 import { NodeInfo, NodeState, NodeHealthStatus } from '../types';
 import { logger } from '../utils/logger';
 import { config } from '../config/config';
@@ -10,7 +11,10 @@ import { config } from '../config/config';
 export class NodeManager {
   private currentState: NodeState = NodeState.STARTING;
 
-  constructor(private nodeRepository: NodeRepository) {}
+  constructor(
+    private nodeRepository: NodeRepository,
+    private sessionRepository: SessionRepository
+  ) {}
 
   /**
    * Register the current node
@@ -81,10 +85,7 @@ export class NodeManager {
 
     const isAlive = await this.nodeRepository.isNodeAlive(nodeId);
     const heartbeat = await this.nodeRepository.getNodeHeartbeat(nodeId);
-
-    // Get session count from session repository would be needed here
-    // For now, we'll return 0 as placeholder
-    const sessionCount = 0;
+    const sessionCount = await this.sessionRepository.getNodeSessionCount(nodeId);
 
     return {
       nodeId,
@@ -105,13 +106,14 @@ export class NodeManager {
     for (const node of nodes) {
       const isAlive = await this.nodeRepository.isNodeAlive(node.nodeId);
       const heartbeat = await this.nodeRepository.getNodeHeartbeat(node.nodeId);
+      const sessionCount = await this.sessionRepository.getNodeSessionCount(node.nodeId);
 
       statuses.push({
         nodeId: node.nodeId,
         state: node.state,
         isHealthy: isAlive && node.state !== NodeState.STOPPED,
         lastHeartbeat: heartbeat || 0,
-        sessionCount: 0, // Will be populated by caller if needed
+        sessionCount,
       });
     }
 

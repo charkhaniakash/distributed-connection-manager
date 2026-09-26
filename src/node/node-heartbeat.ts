@@ -24,11 +24,11 @@ export class NodeHeartbeat {
     this.isRunning = true;
 
     // Send initial heartbeat immediately
-    this.sendHeartbeat();
+    void this.sendHeartbeat();
 
     // Schedule periodic heartbeats
     this.heartbeatInterval = setInterval(() => {
-      this.sendHeartbeat();
+      void this.sendHeartbeat();
     }, config.heartbeatIntervalMs);
 
     logger.info('NODE_HEARTBEAT started', {
