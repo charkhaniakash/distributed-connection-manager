@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { NodeManager } from '../../node/node-manager';
-import { redisClient } from '../../redis/redis-client';
 import { config } from '../../config/config';
+import { redisClient } from '../../redis';
 
 /**
  * Health check controller

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CapacityRepository } from '../../redis/capacity-repository';
+import { CapacityRepository } from '../../redis';
 import { NodeManager } from '../../node/node-manager';
 import { logger } from '../../utils/logger';
 

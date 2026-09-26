@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { SessionManager } from '../../connection/session-manager';
-import { CapacityRepository } from '../../redis/capacity-repository';
 import { logger } from '../../utils/logger';
+import { CapacityRepository } from '../../redis';
 
 /**
  * Organizations controller

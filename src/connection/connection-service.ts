@@ -120,18 +120,19 @@ export class ConnectionService {
         session,
       };
     } catch (error) {
-      // Session creation failed - this should be very rare (Redis issue)
-      // We need to manually decrement the counters since no session exists to cleanup
+      // Session creation failed after capacity was reserved. Release the
+      // orphaned reservation so the slot is not permanently consumed.
       logger.error('Session creation failed after capacity reservation', error, {
         organizationId,
         clientId,
       });
 
-      // Manually decrement counters (this is the only place we do this outside of atomic cleanup)
       try {
-        await this.manuallyReleaseCapacity(organizationId);
+        await this.capacityManager.releaseOrphanedReservation(organizationId);
       } catch (releaseError) {
-        logger.error('Failed to release capacity after session creation failure', releaseError);
+        logger.error('Failed to release orphaned reservation', releaseError, {
+          organizationId,
+        });
       }
 
       return {
@@ -139,28 +140,6 @@ export class ConnectionService {
         reason: ConnectionRejectionReason.INVALID_PARAMETERS,
       };
     }
-  }
-
-  /**
-   * Manually release capacity (only used when session creation fails after reservation)
-   * This is a rare edge case - normally cleanup is done atomically via session cleanup
-   */
-  private async manuallyReleaseCapacity(organizationId: string): Promise<void> {
-    const redis = this.capacityManager['redis'];
-    const orgCountKey = `org:${organizationId}:active_count`;
-    const globalCountKey = 'global:active_count';
-
-    const orgCount = await redis.get(orgCountKey);
-    if (orgCount && parseInt(orgCount, 10) > 0) {
-      await redis.decr(orgCountKey);
-    }
-
-    const globalCount = await redis.get(globalCountKey);
-    if (globalCount && parseInt(globalCount, 10) > 0) {
-      await redis.decr(globalCountKey);
-    }
-
-    logger.debug('Capacity released manually', { organizationId });
   }
 
   /**

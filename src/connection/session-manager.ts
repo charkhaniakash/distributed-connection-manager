@@ -1,7 +1,7 @@
 import { Session, SessionStatus, SessionCreateParams } from '../types';
-import { SessionRepository } from '../redis/session-repository';
 import { CapacityManager } from '../capacity/capacity-manager';
 import { logger } from '../utils/logger';
+import { SessionRepository } from '../redis';
 
 /**
  * SessionManager handles session lifecycle operations

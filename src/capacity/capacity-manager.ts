@@ -72,6 +72,28 @@ const RESERVE_CAPACITY_SCRIPT = `
 `;
 
 /**
+ * Lua script for releasing an orphaned reservation
+ * Used only when capacity was reserved but session creation failed,
+ * so no session key exists to drive atomicCleanupSession
+ */
+const RELEASE_ORPHANED_RESERVATION_SCRIPT = `
+  local org_count_key = KEYS[1]
+  local global_count_key = KEYS[2]
+
+  local org_count = redis.call('GET', org_count_key)
+  if org_count and tonumber(org_count) > 0 then
+    redis.call('DECR', org_count_key)
+  end
+
+  local global_count = redis.call('GET', global_count_key)
+  if global_count and tonumber(global_count) > 0 then
+    redis.call('DECR', global_count_key)
+  end
+
+  return 1
+`;
+
+/**
  * Lua script for atomic session cleanup
  * Ensures session cleanup and capacity release happen atomically
  * This prevents double-decrement when both disconnect and recovery race
@@ -125,6 +147,7 @@ const CLEANUP_SESSION_SCRIPT = `
 export class CapacityManager {
   private reserveScriptSha: string | null = null;
   private cleanupScriptSha: string | null = null;
+  private releaseOrphanedScriptSha: string | null = null;
 
   constructor(private redis: RedisClientType) {}
 
@@ -136,12 +159,45 @@ export class CapacityManager {
     try {
       this.reserveScriptSha = await this.redis.scriptLoad(RESERVE_CAPACITY_SCRIPT);
       this.cleanupScriptSha = await this.redis.scriptLoad(CLEANUP_SESSION_SCRIPT);
+      this.releaseOrphanedScriptSha = await this.redis.scriptLoad(
+        RELEASE_ORPHANED_RESERVATION_SCRIPT
+      );
       logger.info('Capacity management Lua scripts loaded', {
         reserveSha: this.reserveScriptSha,
         cleanupSha: this.cleanupScriptSha,
+        releaseOrphanedSha: this.releaseOrphanedScriptSha,
       });
     } catch (error) {
       logger.error('Failed to load Lua scripts', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Release capacity that was reserved but never used because session
+   * creation failed. Not for normal disconnect flow — atomicCleanupSession
+   * handles that. Idempotent-safe due to the >0 guard in Lua.
+   */
+  async releaseOrphanedReservation(organizationId: string): Promise<void> {
+    const orgCountKey = RedisKeys.orgActiveCount(organizationId);
+    const globalCountKey = RedisKeys.globalActiveCount();
+
+    try {
+      if (this.releaseOrphanedScriptSha) {
+        await this.redis.evalSha(this.releaseOrphanedScriptSha, {
+          keys: [orgCountKey, globalCountKey],
+          arguments: [],
+        });
+      } else {
+        await this.redis.eval(RELEASE_ORPHANED_RESERVATION_SCRIPT, {
+          keys: [orgCountKey, globalCountKey],
+          arguments: [],
+        });
+      }
+
+      logger.debug('Orphaned reservation released', { organizationId });
+    } catch (error) {
+      logger.error('Failed to release orphaned reservation', error, { organizationId });
       throw error;
     }
   }

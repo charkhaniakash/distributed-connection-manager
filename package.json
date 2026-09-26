@@ -1,6 +1,7 @@
 {
   "name": "distributed-connection-manager",
   "version": "1.0.0",
+  "type": "module",
   "description": "Multi-Node Connection Management System with WebSocket support",
   "main": "dist/app.js",
   "scripts": {
@@ -16,7 +17,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "demo:limits": "ts-node scripts/demo-limits.ts",
     "demo:crash": "ts-node scripts/demo-crash.ts",
-    "demo:drain": "ts-node scripts/demo-drain.ts"
+    "demo:drain": "ts-node scripts/demo-drain.ts",
+    "test:connection": "ts-node scripts/test-connection.ts"
   },
   "keywords": [
     "websocket",
