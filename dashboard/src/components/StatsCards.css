@@ -1,18 +1,35 @@
-.stat-value {
-  font-size: 3em;
-  font-weight: 700;
-  color: #333;
-  line-height: 1;
+.stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.stat-label {
-  font-size: 0.9em;
-  color: #666;
-  margin-top: 8px;
+.stat-card .stat-label {
+  font-size: 11px;
+  color: #667eea;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.icon {
-  font-size: 1.2em;
+.stat-card .stat-sub {
+  font-size: 10px;
+  color: #888;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.stat-card .stat-value {
+  font-size: 30px;
+  font-weight: 800;
+  color: #222;
+  line-height: 1;
 }

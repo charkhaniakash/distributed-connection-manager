@@ -1,16 +1,52 @@
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
   color: white;
-  margin-bottom: 30px;
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 .header h1 {
-  font-size: 2.5em;
-  margin-bottom: 10px;
+  font-size: 16px;
   font-weight: 700;
+  margin: 0;
 }
 
-.subtitle {
-  font-size: 1.1em;
-  opacity: 0.9;
+.header .subtitle {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.header-status {
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.header-status.error {
+  background: #b00020;
+}
+
+.header-status .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

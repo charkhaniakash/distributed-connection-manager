@@ -1,61 +1,51 @@
 .capacity-card {
-  margin-bottom: 20px;
+  padding: 8px 14px;
 }
 
-.capacity-stats {
+.capacity-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
-.capacity-value {
-  font-size: 1.5em;
-  font-weight: 600;
+.capacity-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.capacity-percentage {
-  color: #666;
+.capacity-nums {
+  font-size: 12px;
+  color: #333;
+  font-family: 'SF Mono', Menlo, monospace;
+}
+
+.capacity-nums strong {
+  font-size: 14px;
+  color: #222;
 }
 
 .progress-bar {
-  width: 100%;
   height: 8px;
-  background: #e5e7eb;
+  background: #eee;
   border-radius: 4px;
   overflow: hidden;
-  margin-top: 8px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 
 .progress-fill.warning {
-  background: #f59e0b;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
 }
 
 .progress-fill.danger {
-  background: #ef4444;
-}
-
-.refresh-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: #10b981;
-  border-radius: 50%;
-  margin-left: 8px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
+  background: linear-gradient(90deg, #f87171, #ef4444);
 }

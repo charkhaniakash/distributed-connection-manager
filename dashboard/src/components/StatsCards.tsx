@@ -1,42 +1,47 @@
-import { Stats, Node } from '../types'
+import { StatsResponse, Node, Organization } from '../types'
 import './StatsCards.css'
 
 interface Props {
-  stats: Stats
+  stats: StatsResponse
   nodes: Node[]
+  organizations: Organization[]
 }
 
-export default function StatsCards({ stats, nodes }: Props) {
-  const activeNodes = nodes.filter(n => n.state === 'ACTIVE').length
+export default function StatsCards({ stats, nodes, organizations }: Props) {
+  const activeNodes = nodes.filter((n) => n.state === 'ACTIVE' && n.isAlive).length
+  const totalNodes = nodes.length
 
   return (
-    <div className="grid">
-      <div className="card">
-        <div className="card-title">
-          <span className="icon">📊</span>
-          Total Connections
+    <>
+      <div className="stat-card">
+        <div>
+          <div className="stat-label">
+            <span className="icon">📊</span>Total connections
+          </div>
+          <div className="stat-sub">Active sessions</div>
         </div>
-        <div className="stat-value">{stats.global.activeConnections || 0}</div>
-        <div className="stat-label">Active Sessions</div>
+        <div className="stat-value">{stats.totalActiveSessions || 0}</div>
       </div>
 
-      <div className="card">
-        <div className="card-title">
-          <span className="icon">🖥️</span>
-          Active Nodes
+      <div className="stat-card">
+        <div>
+          <div className="stat-label">
+            <span className="icon">🖥️</span>Active nodes
+          </div>
+          <div className="stat-sub">Healthy / total</div>
         </div>
-        <div className="stat-value">{activeNodes}</div>
-        <div className="stat-label">Healthy Nodes</div>
+        <div className="stat-value">{activeNodes}<span style={{fontSize:14,color:'#888',fontWeight:600}}>/{totalNodes}</span></div>
       </div>
 
-      <div className="card">
-        <div className="card-title">
-          <span className="icon">🏢</span>
-          Organizations
+      <div className="stat-card">
+        <div>
+          <div className="stat-label">
+            <span className="icon">🏢</span>Organizations
+          </div>
+          <div className="stat-sub">With active sessions</div>
         </div>
-        <div className="stat-value">{stats.organizations.length || 0}</div>
-        <div className="stat-label">With Active Sessions</div>
+        <div className="stat-value">{organizations.length}</div>
       </div>
-    </div>
+    </>
   )
 }
