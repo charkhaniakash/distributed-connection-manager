@@ -115,7 +115,10 @@ class Application {
     await this.capacityRepository.initializeGlobalCapacity();
 
     // Session management
-    this.sessionManager = new SessionManager(this.sessionRepository);
+    this.sessionManager = new SessionManager(
+      this.sessionRepository,
+      this.capacityManager
+    );
 
     // Connection management
     this.connectionService = new ConnectionService(
@@ -128,19 +131,17 @@ class Application {
     );
 
     // Node management
-    this.nodeManager = new NodeManager(this.nodeRepository);
+    this.nodeManager = new NodeManager(this.nodeRepository, this.sessionRepository);
     this.nodeHeartbeat = new NodeHeartbeat(this.nodeRepository);
     this.drainService = new DrainService(
       this.nodeManager,
-      this.connectionManager,
-      this.sessionManager
+      this.connectionManager
     );
 
     // Recovery
     this.sessionRecovery = new SessionRecoveryService(
       this.sessionRepository,
-      this.sessionManager,
-      this.capacityManager
+      this.sessionManager
     );
     this.failureDetector = new FailureDetector(
       this.nodeRepository,
@@ -224,8 +225,8 @@ class Application {
       }
     };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => void shutdown('SIGTERM'));
+    process.on('SIGINT', () => void shutdown('SIGINT'));
   }
 }
 
