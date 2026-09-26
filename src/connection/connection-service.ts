@@ -120,13 +120,19 @@ export class ConnectionService {
         session,
       };
     } catch (error) {
-      // Session creation failed - release the reserved capacity
-      logger.error('Session creation failed, releasing capacity', error, {
+      // Session creation failed - this should be very rare (Redis issue)
+      // We need to manually decrement the counters since no session exists to cleanup
+      logger.error('Session creation failed after capacity reservation', error, {
         organizationId,
         clientId,
       });
 
-      await this.capacityManager.releaseCapacity(organizationId);
+      // Manually decrement counters (this is the only place we do this outside of atomic cleanup)
+      try {
+        await this.manuallyReleaseCapacity(organizationId);
+      } catch (releaseError) {
+        logger.error('Failed to release capacity after session creation failure', releaseError);
+      }
 
       return {
         accepted: false,
@@ -136,27 +142,34 @@ export class ConnectionService {
   }
 
   /**
-   * Handle connection disconnect
-   * Performs idempotent cleanup of session and capacity
+   * Manually release capacity (only used when session creation fails after reservation)
+   * This is a rare edge case - normally cleanup is done atomically via session cleanup
    */
-  async handleDisconnect(sessionId: string): Promise<void> {
-    const session = await this.sessionManager.getSession(sessionId);
+  private async manuallyReleaseCapacity(organizationId: string): Promise<void> {
+    const redis = this.capacityManager['redis'];
+    const orgCountKey = `org:${organizationId}:active_count`;
+    const globalCountKey = 'global:active_count';
 
-    if (!session) {
-      logger.debug('Session not found during disconnect', { sessionId });
-      return;
+    const orgCount = await redis.get(orgCountKey);
+    if (orgCount && parseInt(orgCount, 10) > 0) {
+      await redis.decr(orgCountKey);
     }
 
-    // Clean up session
+    const globalCount = await redis.get(globalCountKey);
+    if (globalCount && parseInt(globalCount, 10) > 0) {
+      await redis.decr(globalCountKey);
+    }
+
+    logger.debug('Capacity released manually', { organizationId });
+  }
+
+  /**
+   * Handle connection disconnect
+   * Performs idempotent cleanup of session and capacity using atomic operation
+   */
+  async handleDisconnect(sessionId: string): Promise<void> {
     await this.sessionManager.cleanupSession(sessionId);
 
-    // Release capacity
-    await this.capacityManager.releaseCapacity(session.organizationId);
-
-    logger.info('CONNECTION_DISCONNECTED', {
-      sessionId,
-      organizationId: session.organizationId,
-      nodeId: session.nodeId,
-    });
+    logger.info('CONNECTION_DISCONNECTED', { sessionId });
   }
 }

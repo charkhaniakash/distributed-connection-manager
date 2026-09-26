@@ -36,7 +36,7 @@ export class ConnectionManager {
     });
 
     this.wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
-      this.handleConnection(ws, request);
+      void this.handleConnection(ws, request);
     });
 
     logger.info('WebSocket server initialized', { path: '/ws' });
@@ -103,7 +103,7 @@ export class ConnectionManager {
         organizationId,
       });
     } catch (error) {
-      logger.error('Error handling connection', error);
+      logger.error('Error handling connection', error as Error);
       sendConnectionRejected(ws, 'INVALID_PARAMETERS');
     }
   }

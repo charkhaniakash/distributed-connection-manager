@@ -1,5 +1,6 @@
 import { Session, SessionStatus, SessionCreateParams } from '../types';
 import { SessionRepository } from '../redis/session-repository';
+import { CapacityManager } from '../capacity/capacity-manager';
 import { logger } from '../utils/logger';
 
 /**
@@ -7,7 +8,10 @@ import { logger } from '../utils/logger';
  * Coordinates between WebSocket connections and Redis session state
  */
 export class SessionManager {
-  constructor(private sessionRepository: SessionRepository) {}
+  constructor(
+    private sessionRepository: SessionRepository,
+    private capacityManager: CapacityManager
+  ) {}
 
   /**
    * Create a new session
@@ -97,32 +101,17 @@ export class SessionManager {
   }
 
   /**
-   * Clean up a session
-   * This is idempotent - safe to call multiple times
+   * Clean up a session atomically
+   * This is idempotent - safe to call multiple times even concurrently
+   * Uses atomic Lua script to prevent double-decrement of capacity counters
    */
   async cleanupSession(sessionId: string): Promise<void> {
-    const session = await this.sessionRepository.getSession(sessionId);
+    const cleaned = await this.capacityManager.atomicCleanupSession(sessionId);
 
-    if (!session) {
-      // Session already cleaned up
+    if (cleaned) {
+      logger.info('SESSION_CLEANED_UP', { sessionId });
+    } else {
       logger.debug('Session already cleaned up', { sessionId });
-      return;
     }
-
-    // Remove from tracking sets
-    await this.sessionRepository.removeSessionFromOrganization(
-      sessionId,
-      session.organizationId
-    );
-    await this.sessionRepository.removeSessionFromNode(sessionId, session.nodeId);
-
-    // Delete session data
-    await this.sessionRepository.deleteSession(sessionId);
-
-    logger.info('SESSION_CLEANED_UP', {
-      sessionId,
-      organizationId: session.organizationId,
-      nodeId: session.nodeId,
-    });
   }
 }

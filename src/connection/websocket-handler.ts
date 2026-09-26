@@ -8,7 +8,6 @@ import {
   HeartbeatMessage,
   WebSocketMessage,
 } from '../types';
-import { NodeState } from '../types';
 import { logger } from '../utils/logger';
 import { config } from '../config/config';
 
@@ -18,6 +17,8 @@ import { config } from '../config/config';
  */
 export class WebSocketHandler {
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private lastPongReceived: number = Date.now();
+  private missedPongs = 0;
 
   constructor(
     private ws: WebSocket,
@@ -52,6 +53,8 @@ export class WebSocketHandler {
 
     this.ws.on('pong', () => {
       // Update session heartbeat on pong response
+      this.lastPongReceived = Date.now();
+      this.missedPongs = 0;
       this.sessionManager.updateHeartbeat(this.sessionId).catch((error) => {
         logger.error('Failed to update heartbeat', error, { sessionId: this.sessionId });
       });
@@ -63,7 +66,7 @@ export class WebSocketHandler {
    */
   private handleMessage(data: WebSocket.Data): void {
     try {
-      const message = JSON.parse(data.toString()) as WebSocketMessage;
+      const message = JSON.parse(String(data)) as WebSocketMessage;
 
       if (message.type === 'heartbeat') {
         // Update heartbeat timestamp
@@ -102,6 +105,23 @@ export class WebSocketHandler {
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       if (this.ws.readyState === WebSocket.OPEN) {
+        // Check if we've received pong since last ping
+        const timeSinceLastPong = Date.now() - this.lastPongReceived;
+        
+        if (timeSinceLastPong > config.sessionHeartbeatIntervalMs * 2) {
+          this.missedPongs++;
+          
+          // If we've missed 2 consecutive pongs, consider connection dead
+          if (this.missedPongs >= 2) {
+            logger.warn('Dead peer detected - no pong received', {
+              sessionId: this.sessionId,
+              missedPongs: this.missedPongs,
+            });
+            this.ws.terminate();
+            return;
+          }
+        }
+        
         this.ws.ping();
       }
     }, config.sessionHeartbeatIntervalMs);
@@ -182,10 +202,7 @@ export function sendConnectionRejected(ws: WebSocket, reason: string): void {
     reason: reason as ConnectionRejectedMessage['reason'],
   };
 
-  ws.send(JSON.stringify(message));
-
-  // Close connection after sending rejection
-  setTimeout(() => {
+  ws.send(JSON.stringify(message), () => {
     ws.close();
-  }, 100);
+  });
 }
